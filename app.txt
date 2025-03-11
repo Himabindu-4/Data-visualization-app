@@ -1,0 +1,93 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Set Streamlit page config
+st.set_page_config(page_title="🚀 Data Dashboard", layout="wide")
+
+# Custom CSS for better UI
+st.markdown("""
+    <style>
+        body {background-color: #0E1117; color: white;}
+        .main {background-color: #0E1117;}
+        h1, h2, h3 {color: #FFA500;}
+        .stDataFrame {background-color: #1E1E1E; color: white;}
+    </style>
+""", unsafe_allow_html=True)
+
+# Title
+st.title("📊 Interactive Data Visualization Dashboard")
+
+# File Upload
+uploaded_file = st.sidebar.file_uploader("📂 Upload a CSV or Excel file", type=["csv", "xlsx"])
+
+if uploaded_file:
+    try:
+        # Read dataset
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+
+        # Show dataset preview
+        st.sidebar.write("🔍 **Preview of Dataset:**")
+        st.sidebar.dataframe(df.head())
+
+        # KPIs Section
+        st.subheader("📌 Key Performance Indicators")
+        cols = st.columns(4)
+        cols[0].metric("📊 Total Rows", df.shape[0])
+        cols[1].metric("🔢 Numeric Columns", len(df.select_dtypes(include=['number']).columns))
+        cols[2].metric("🔠 Categorical Columns", len(df.select_dtypes(include=['object']).columns))
+        cols[3].metric("📂 File Name", uploaded_file.name)
+
+        # Sidebar for Visualization Selection
+        st.sidebar.subheader("📈 Select Visualization Type")
+        chart_type = st.sidebar.radio(
+            "Choose a chart type",
+            ["📊 Bar Chart", "📈 Line Chart", "⚫ Scatter Plot", "🥧 Pie Chart", "🔥 Correlation Heatmap"]
+        )
+
+        # Select numeric & categorical columns
+        numeric_cols = df.select_dtypes(include=['number']).columns
+        categorical_cols = df.select_dtypes(include=['object']).columns
+
+        # Sidebar selections
+        x_axis = st.sidebar.selectbox("📌 Select X-axis", df.columns)
+        y_axis = st.sidebar.selectbox("📌 Select Y-axis", numeric_cols if len(numeric_cols) > 0 else [None])
+
+        # Visualization Section
+        st.subheader("📊 Data Visualizations")
+        if chart_type == "📊 Bar Chart":
+            fig = px.bar(df, x=x_axis, y=y_axis, color=x_axis, title=f"Bar Chart: {x_axis} vs {y_axis}")
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif chart_type == "📈 Line Chart":
+            fig = px.line(df, x=x_axis, y=y_axis, title=f"Line Chart: {x_axis} vs {y_axis}")
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif chart_type == "⚫ Scatter Plot":
+            fig = px.scatter(df, x=x_axis, y=y_axis, color=x_axis, title=f"Scatter Plot: {x_axis} vs {y_axis}")
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif chart_type == "🥧 Pie Chart":
+            category_col = st.sidebar.selectbox("📌 Select Categorical Column for Pie Chart", categorical_cols)
+            fig = px.pie(df, names=category_col, title=f"Pie Chart of {category_col}")
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif chart_type == "🔥 Correlation Heatmap":
+            df_numeric = df.select_dtypes(include=['number'])
+            if not df_numeric.empty:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                sns.heatmap(df_numeric.corr(), annot=True, cmap="coolwarm", ax=ax)
+                st.pyplot(fig)
+            else:
+                st.warning("⚠ No numeric columns available for correlation heatmap.")
+
+    except Exception as e:
+        st.error(f"❌ Error loading file: {e}")
+
+else:
+    st.info("📂 Please upload a dataset to get started!")
